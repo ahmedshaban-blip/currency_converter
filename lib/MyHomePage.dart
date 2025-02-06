@@ -1,116 +1,116 @@
+import 'package:currency_converter/cubit/currency_converter_cubit.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required String title});
+class CurrencyConverterScreen extends StatefulWidget {
+  const CurrencyConverterScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _CurrencyConverterScreenState createState() => _CurrencyConverterScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-String dropdownvalue = 'Egy';
-String dropdownvalue2 = 'Egy';
+class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
+  final TextEditingController _amountController = TextEditingController();
 
-  var items=[
-      'Egy',
-      'Doullar',
-      'Euro',
-      'Qatar',
-    
-  ];
-
-  var items2=[
-      'Egy',
-      'Doullar',
-      'Euro',
-      'Qatar',
-    
-  ];
-  final _formKey = GlobalKey<FormBuilderState>();
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(backgroundColor: Colors.deepOrange,
-    title: Center(child: Text('Currency Converter',style: TextStyle(fontWeight: FontWeight.bold),)),
-    ),
-    body: Column(children: [
-      FormBuilderTextField(
-        key: _formKey,                   
-        name: "value that Convert",
-      decoration: InputDecoration(labelText: 'Value'),
-    validator: FormBuilderValidators.compose([
-        FormBuilderValidators.required(),
-        FormBuilderValidators.notZeroNumber(),
-]),
+    return BlocProvider(
+      create: (context) => CurrencyConverterCubit(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('محول العملات')),
+        body: BlocConsumer<CurrencyConverterCubit, CurrencyConverterState>(
+          listener: (context, state) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!)),
+              );
+            }
+          },
+          builder: (context, state) {
+            final cubit = BlocProvider.of<CurrencyConverterCubit>(context);
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _amountController,
+                    decoration: const InputDecoration(
+                      labelText: 'أدخل المبلغ',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: _buildCurrencyDropdown(
+                        value: state.fromCurrency,
+                        onChanged: cubit.updateFromCurrency,
+                        label: 'من',
+                        currencies: state.currencies,
+                      )),
+                      IconButton(
+                        icon: const Icon(Icons.swap_horiz),
+                        onPressed: cubit.swapCurrencies,
+                      ),
+                      Expanded(child: _buildCurrencyDropdown(
+                        value: state.toCurrency,
+                        onChanged: cubit.updateToCurrency,
+                        label: 'إلى',
+                        currencies: state.currencies,
+                      )),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () => cubit.convert(double.parse(_amountController.text)),
+                    child: const Text('Convert'),
+                  ),
+                  if (state.isLoading) const CircularProgressIndicator(),
+                  if (state.convertedAmount != null)
+                    Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'النتيجة: ${NumberFormat.currency(symbol: '').format(state.convertedAmount)} ${state.toCurrency}',
+                        style: const TextStyle(fontSize: 20),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-
-    ),
-
-          SizedBox(height: 50),
-Text('FROM'),
-     DropdownButton(
-              
-              // Initial Value
-              value: dropdownvalue,
-              
-              // Down Arrow Icon
-              icon: const Icon(Icons.keyboard_arrow_down),    
-              
-              // Array list of items
-              items: items.map((String items) {
-                return DropdownMenuItem(
-                  value: items,
-                  child: Text(items),
-                );
-              }).toList(),
-              // After selecting the desired option,it will
-              // change button value to selected value
-              onChanged: (String? newValue) { 
-                setState(() {
-                  dropdownvalue = newValue!;
-                });
-              },
-            ),
-            Text('TO'),
-            DropdownButton(
-              
-              // Initial Value
-              value: dropdownvalue2,
-              
-              // Down Arrow Icon
-              icon: const Icon(Icons.keyboard_arrow_down),    
-              
-              // Array list of items
-              items: items.map((String items) {
-                return DropdownMenuItem(
-                  value: items,
-                  child: Text(items ),
-                );
-              }).toList(),
-              // After selecting the desired option,it will
-              // change button value to selected value
-              onChanged: (String? newValue) { 
-                setState(() {
-                  dropdownvalue2 = newValue!;
-                });
-              },
-            ),
-            Container(width: 90,height: 90,color: Colors.brown,),
-            SizedBox(height: 20,),
-            ElevatedButton(onPressed: (){}, child: Text('Covert',style: TextStyle(fontWeight: FontWeight.bold),))
-
-     ],
-
-    
-    
-    ),
+  Widget _buildCurrencyDropdown({
+    required String value,
+    required ValueChanged<String> onChanged,
+    required String label,
+    required List<String> currencies,
+  }) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          items: currencies.map((currency) {
+            return DropdownMenuItem<String>(
+              value: currency,
+              child: Text(currency),
+            );
+          }).toList(),
+          onChanged: (value) => onChanged(value!),
+        ),
+      ),
     );
   }
 }
-
-
-
-
-
-
