@@ -1,6 +1,10 @@
+# Ignore non-Dart languages
 *.cpp linguist-vendored
 *.c linguist-vendored
 *.cmake linguist-vendored
 *.h linguist-vendored
 *.html linguist-vendored
 *.swift linguist-vendored
+
+# Include Dart
+*.dart linguist-language=Dart
